@@ -95,6 +95,65 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\install_mumu_tas
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\check_ps_syntax.ps1
 ```
 
+## Agent 部署要点（面向代替人类执行部署的 AI 代理）
+
+按「先决条件 → 配置 → 安装 → 验证 → 坑位 → 红线」执行，所有命令可直接运行核对。
+
+**先决条件（Windows 10/11，已登录的交互用户会话；逐项核对）**
+
+1. Python 必须是 **Windows CPython 3.12**：`py -3.12 -V` 应出版本号。若 PATH 里的 `python` 属于 MSYS2（路径含 `msys64`）或 Microsoft Store（路径含 `WindowsApps`），**禁止使用**——它们创建的 venv 是 `bin/` 布局，而本项目全部脚本写死 `.venv\Scripts\python.exe`，会全部找不到解释器（真实踩坑）。
+2. **MuMu 模拟器**已安装，且目标考勤 App 已由用户本人登录（代理无法代办登录）；实例分辨率需为 1080×1920 竖屏（页面识别坐标硬编码）。
+3. **adb**：把 Android platform-tools 解压到 `<repo>\android-sdk\platform-tools\adb.exe`——路径是代码硬编码的 ROOT 相对路径，位置不可变。
+
+**配置（三个私有文件，均已被 .gitignore 排除，永不入库）**
+
+1. `config\mumu.json` ← 复制 `config\mumu.example.json`，填写：`manager_path`（MuMuManager.exe 绝对路径）、`vm_index`/`vm_name`（必须与目标 MuMu 实例**完全一致**，防误操作别的实例）、`package`、`organization`（目标组织工作台标题）、`location` 经纬度、六个时段。组织名与坐标属于用户隐私。
+2. `.env`（可选，结果通知器）：`NOTIFY_FEISHU_APP_ID` / `NOTIFY_FEISHU_APP_SECRET` / `NOTIFY_FEISHU_PHONE`，详见 [docs/notifier.md](docs/notifier.md)。
+3. 配置自检（非法会抛 ValueError，带中文原因）：
+
+```powershell
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0,'scripts'); import mumu_common; mumu_common.read_config(); print('config ok')"
+```
+
+**安装**
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\install_mumu_task.ps1    # 服务+托盘（登录自启+看门狗）
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\install_adb_recycle.ps1  # 每日 03:00 防 adb 僵死（建议）
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\notify_install.ps1       # 通知器（可选，先配 .env）
+```
+
+**验证（按序执行，全部通过才算部署成功）**
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests    # 预期 69 tests OK；测试自包含，无需任何私有配置
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\check_ps_syntax.ps1       # 预期全部 OK
+Invoke-RestMethod http://127.0.0.1:18765/api/health                                        # 预期 service=running
+```
+
+端到端验证用**演练**（会真实启动模拟器、打开考勤 App、完成两次刷新并确认在打卡范围内，但**不会点击提交**）：控制台点「运行一次演练」，或带 token POST `/api/preview`。演练通过即全链路可用。
+
+**已知坑位（症状 → 根因 → 处置）**
+
+| 症状 | 根因 | 处置 |
+|---|---|---|
+| `.venv\Scripts\python.exe` 不存在 | 用 MSYS2/Store 的 python 建了 venv | 删除 `.venv`，用 `py -3.12 -m venv .venv` 重建 |
+| 签到/演练报「MuMu 启动超时」且 `adb devices` 对模拟器显示 offline | 宿主 adb server 长期运行后僵死（缓存 offline 条目） | `adb kill-server` 即愈；worker 已内置自愈，另见 [docs/incident-20260915-adb.md](docs/incident-20260915-adb.md) |
+| 托盘菜单文字为空/乱码 | `scripts\*.ps1` 被写入非 ASCII 字符（Windows PowerShell 5.1 按 ANSI 读 .ps1） | **铁律：.ps1 只准纯 ASCII**，中文文案只能放 `tray_text.json`（UTF-8）；改完必跑 check_ps_syntax.ps1 |
+| 端口 18765 已占用 / 出现第二个服务实例 | 旧实例未退或重复安装 | 单实例由端口绑定失败保障；用 `/api/health` 找 pid，勿删 `data\service.pid` |
+| 「已在打卡范围内」识别不到 | 分辨率不是 1080×1920、App 未进目标组织工作台、或登录失效 | 人工在 MuMu 里核对后重跑演练 |
+
+**红线（代理必须遵守）**
+
+- **未经用户明确指令不得触发真实签到**；一切验证只用「演练」（preview 不提交）。
+- 不得提交/上传 `.env`、`config\mumu.json`、`config\notify.json`、`logs\`、`data\`（截图与执行记录含用户隐私）。
+- 不得停止/重启用户机器上的 WSL、Docker 及其他无关服务；`adb kill-server` 是允许的（仅影响 adb 守护进程）。
+- 服务仅监听 `127.0.0.1` 是安全边界，不得改为对外监听。
+- 修改任何 `scripts\*.ps1` 后必须运行 `check_ps_syntax.ps1` 并全绿才算完成。
+- 用户要求停止服务时走控制台「后台服务」卡片或托盘右键（会写停止标记），不要直接杀进程（看门狗会复活）。
+
 | 路径 | 用途 |
 |---|---|
 | `config/mumu.json` | 面板设置 |
