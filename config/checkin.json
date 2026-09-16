@@ -1,0 +1,15 @@
+{
+  "location": { "lon": 116.397128, "lat": 39.916527 },
+  "apps": [
+    {
+      "package": "com.example.targetapp",
+      "actions": [
+        { "type": "launch", "wait": 8 },
+        { "type": "screenshot", "name": "app_home" },
+        { "type": "tap_text", "text": "签到", "index": 0 },
+        { "type": "wait", "seconds": 3 },
+        { "type": "screenshot", "name": "after_checkin" }
+      ]
+    }
+  ]
+}

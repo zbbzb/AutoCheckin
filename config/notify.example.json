@@ -1,0 +1,21 @@
+{
+  "channel": "feishu",
+  "feishu": {
+    "app_id": "",
+    "app_secret": "",
+    "chat_id": "",
+    "phone": "",
+    "email": "",
+    "receive_mode": "p2p"
+  },
+  "wecom": {
+    "webhook": ""
+  },
+  "enabled": true,
+  "poll_seconds": 8,
+  "statuses": ["success", "failed", "uncertain", "missed", "cancelled"],
+  "send_image": true,
+  "jpeg_quality": 80,
+  "image_max_bytes": 2000000,
+  "max_age_hours": 24
+}

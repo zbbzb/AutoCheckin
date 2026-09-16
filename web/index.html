@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>签到控制台 · AutoCheckin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-mark">✓</span><span>AutoCheckin<small>你的签到小助手</small></span></a>
+    <div class="side-label">工作空间</div>
+    <a class="nav active" href="#overview"><span>◷</span> 签到控制台</a>
+    <a class="nav" href="#schedule"><span>▦</span> 时间与开关</a>
+    <a class="nav" href="#history"><span>≡</span> 执行记录</a>
+    <div class="side-bottom"><span class="dot" id="connectionDot"></span><span id="connection">正在连接本机服务</span><small>仅在这台电脑上运行<br>北京时间 · UTC+8</small></div>
+  </aside>
+  <main id="overview">
+    <header><div><div class="eyebrow">日常安排，自在掌握</div><h1>签到控制台<span class="tiny-tag">MuMu × 得力e+</span></h1><p class="muted" id="dateLabel">正在载入今天的安排…</p></div><button id="preview" class="button outline" disabled>▷ &nbsp; 运行一次演练</button></header>
+    <section class="hero">
+      <div class="hero-left"><div class="hero-kicker"><span class="dot" id="masterDot"></span><span id="masterStatus">读取配置中</span></div><h2 id="heroTitle">让每天的签到，有条不紊。</h2><p id="heroSub">工作日六次签到，周末休息。</p><div class="hero-meta"><span>周一至周五</span><span id="randomBadge">15 分钟随机窗口</span><span id="silentBadge">后台静默</span></div></div>
+      <div class="master-control"><label class="switch large"><input id="master" type="checkbox" aria-label="自动签到总开关" disabled><span></span></label><strong>自动签到</strong><small>开关立即生效</small></div>
+    </section>
+    <div class="stats"><article><div class="stat-label">下一次签到 <span>↗</span></div><div class="stat-value" id="nextTime">—</div><div class="stat-detail" id="nextLabel">正在读取计划</div></article><article><div class="stat-label">今日已完成 <span>✓</span></div><div class="stat-value"><span id="done">—</span><em id="total"> / 6 次</em></div><div class="stat-detail" id="todayNote">每个时段独立记录</div></article><article><div class="stat-label">当前流程 <span>◌</span></div><div class="stat-value compact" id="runStatus">等待连接</div><div class="stat-detail" id="runDetail">关闭网页后，后台服务仍会运行</div><button id="stop" class="text-button danger" hidden>停止本次运行</button></article><article><div class="stat-label">后台服务 <span>⏻</span></div><div class="stat-value compact" id="serviceState">读取中</div><div class="stat-detail" id="serviceDetail">点击停止后，重启电脑会再次自动运行</div><div class="service-actions"><button id="serviceRestart" class="text-button" type="button">重启服务</button><button id="serviceStop" class="text-button danger" type="button">停止服务</button></div></article></div>
+    <section id="schedule" class="panel"><div class="section-head"><div><h2>时间与开关</h2><p>上班提前随机，下班延后随机。每个时段都可以单独调整。</p></div><span class="pill">周末不执行</span></div>
+      <form id="settings"><div class="table-wrap"><table class="schedule-table"><thead><tr><th>时段</th><th>标准时间</th><th>随机签到窗口</th><th>今日随机时间</th><th>启用</th></tr></thead><tbody id="slotRows"></tbody></table></div>
+      <div class="settings-row"><label class="field inline-field">随机窗口 <span><input id="randomMinutes" type="number" min="1" max="30" required> 分钟</span></label><label class="silent-control"><span><strong>后台静默运行</strong><small>启动时隐藏目标 MuMu 窗口</small></span><span class="switch"><input id="silent" type="checkbox" aria-label="后台静默运行"><span></span></span></label></div>
+      <details><summary>模拟器与定位设置 <span>实例、坐标、准备时间</span></summary><div class="advanced"><label class="field">MuMu 实例编号<input id="vmIndex" type="number" min="0" max="999" required></label><label class="field">MuMu 实例名称<input id="vmName" required></label><label class="field full">目标组织<input id="organization" required></label><label class="field">定位经度<input id="longitude" type="number" step="any" min="-180" max="180" required></label><label class="field">定位纬度<input id="latitude" type="number" step="any" min="-90" max="90" required></label><label class="field">提前准备<input id="prepareSeconds" type="number" min="60" max="600" required><small>秒；启动模拟器、打开得力e+</small></label><label class="field">应用包名<input id="package" required></label><label class="field full">MuMu 管理程序路径<input id="managerPath" required></label><p class="advanced-note full">定位沿用已验证的 MuMu 输入坐标。更换实例后，请确认已登录得力e+，页面为 1080 × 1920 竖屏。</p></div></details>
+      <div class="form-footer"><span id="saveNote">设置保存在本机，关闭页面不影响运行。</span><button type="submit" class="button primary" id="save">保存设置 <span>↗</span></button></div></form>
+    </section>
+    <section class="workflow"><div class="workflow-title">每次都会这样执行 <small>刷新两次，每次等待 10 秒</small></div><div class="steps"><span>01 启动 MuMu</span><b>→</b><span>02 设置定位</span><b>→</b><span>03 打开得力</span><b>→</b><span>04 刷新 × 2</span><b>→</b><span>05 签到并确认</span><b>→</b><span>06 关闭页面与应用</span></div></section>
+    <section id="history" class="panel history"><div class="section-head"><div><h2>执行记录</h2><p>签到结果、演练和异常，都可以在这里查看。</p></div><span class="live-label"><span class="dot"></span>自动更新</span></div><div id="historyRows" class="history-list"><div class="empty">正在读取记录…</div></div></section>
+    <footer>电脑需保持开机、已登录且未休眠。超过签到窗口会跳过；提交结果不明确时不会重复点击。<br>MuMu 启动时可能短暂闪窗；演练会运行到签到前，并关闭得力和目标模拟器。</footer>
+  </main>
+</div><div id="toast" role="status" aria-live="polite" hidden></div>
+</body></html>

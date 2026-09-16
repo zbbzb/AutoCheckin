@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+android-sdk/
+avds/
+apps/
+downloads/
+logs/
+data/
+*.lnk
+.env
+.hindsight/
+# 真实运行配置含组织名/坐标等隐私，只入库模板
+config/mumu.json
+config/notify.json

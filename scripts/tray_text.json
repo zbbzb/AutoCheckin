@@ -1,0 +1,20 @@
+{
+  "consoleShortcut": "签到控制台.lnk",
+  "shortcutDescription": "MuMu 自动签到控制台",
+  "installDone": "控制台已安装。打开地址：http://127.0.0.1:18765/",
+  "trayTooltipStarting": "AutoCheckin · 正在启动",
+  "trayTooltipRunning": "AutoCheckin · 服务运行中",
+  "trayTooltipEnabled": "自动签到已开启",
+  "trayTooltipDisabled": "自动签到已暂停",
+  "trayTooltipStopped": "AutoCheckin · 服务已停止（右键可启动）",
+  "menuOpen": "打开签到控制台",
+  "menuRestart": "重启后台服务",
+  "menuStop": "停止后台服务",
+  "menuNotify": "飞书通知",
+  "menuExit": "退出托盘（服务继续运行）",
+  "balloonStarted": "后台服务已启动",
+  "balloonStopped": "后台服务已停止；重启电脑后会自动恢复",
+  "balloonStarting": "后台服务正在启动",
+  "balloonNotifyOn": "飞书通知已启用",
+  "balloonNotifyOff": "飞书通知已停用（打卡照常执行）"
+}

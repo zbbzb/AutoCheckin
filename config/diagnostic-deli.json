@@ -1,0 +1,11 @@
+{
+  "apps": [
+    {
+      "package": "com.delicloud.app.smartoffice",
+      "actions": [
+        {"type": "launch", "wait": 8},
+        {"type": "screenshot", "name": "deli_started"}
+      ]
+    }
+  ]
+}

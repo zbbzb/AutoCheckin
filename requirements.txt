@@ -1,0 +1,7 @@
+rapidocr_onnxruntime==1.4.4
+# rapidocr only declares opencv-python>=4.5.1.48, so a fresh install silently pulls in
+# the newest OpenCV. That already broke the worker once: OpenCV 5 changed HoughLinesP
+# from (N,1,4) to (N,4). mumu_worker.find_close_cross now accepts both shapes, but keep
+# an explicit upper bound so an untested major version cannot land unreviewed.
+opencv-python>=4.5.1.48,<6
+numpy>=1.19.5,<3.0.0

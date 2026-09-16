@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "package": "com.google.android.apps.maps",
+      "actions": [
+        {"type": "launch", "wait": 8},
+        {"type": "geo", "lon": 116.397128, "lat": 39.916527, "verify": true},
+        {"type": "screenshot", "name": "maps_verified"}
+      ]
+    }
+  ]
+}

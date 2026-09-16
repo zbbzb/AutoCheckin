@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "silent": true,
+  "random_minutes": 15,
+  "prepare_seconds": 180,
+  "manager_path": "C:\\Path\\To\\MuMuPlayer\\nx_main\\MuMuManager.exe",
+  "vm_index": 0,
+  "vm_name": "YourInstanceName",
+  "package": "com.example.targetapp",
+  "organization": "你的目标组织名称（工作台标题）",
+  "location": {
+    "longitude": 0.0,
+    "latitude": 0.0
+  },
+  "slots": [
+    {"id": "morning-in",   "label": "上午上班", "kind": "in",  "time": "09:00", "enabled": true},
+    {"id": "morning-out",  "label": "上午下班", "kind": "out", "time": "11:30", "enabled": true},
+    {"id": "afternoon-in", "label": "下午上班", "kind": "in",  "time": "13:30", "enabled": true},
+    {"id": "afternoon-out","label": "下午下班", "kind": "out", "time": "17:30", "enabled": true},
+    {"id": "evening-in",   "label": "晚上上班", "kind": "in",  "time": "19:00", "enabled": true},
+    {"id": "evening-out",  "label": "晚上下班", "kind": "out", "time": "20:30", "enabled": true}
+  ]
+}
