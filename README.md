@@ -77,9 +77,11 @@
 重新安装：
 
 ```powershell
-# 使用 Windows CPython 3.12 创建本地运行环境
-python -m venv .venv
+# 使用 Windows CPython 3.12 创建本地运行环境（python.org 安装后用 py 启动器；
+# 不要用 MSYS2/Store 的 python——它们生成 bin/ 布局的 venv，脚本的 .venv\Scripts 路径会失效）
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+# worker 与服务依赖 adb：把 Android platform-tools 压缩包解压到 android-sdk\platform-tools\（内含 adb.exe）
 # 签到配置：复制模板并填写自己的信息（组织名/坐标/实例/时段，含隐私不入库）
 Copy-Item config\mumu.example.json config\mumu.json
 # 通知器凭据放 .env（勿提交），见 docs/notifier.md
@@ -108,6 +110,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\check_ps_syntax.
 | `scripts/mumu_tray.ps1` `scripts/tray_text.json` | 托盘图标与其中文文案 |
 | `scripts/notify_daemon.py` `config/notify.json` `.env` | 打卡结果飞书通知器（凭据在 `.env`；托盘「飞书通知」勾选框开关；见 [通知器文档](docs/notifier.md)） |
 | `scripts/adb_recycle.ps1` `scripts/install_adb_recycle.ps1` | 计划任务 `AutoCheckin-AdBRecycle`：每天 03:00 回收 adb server，防止长驻僵死（见 [9-15 事故记录](docs/incident-20260915-adb.md)） |
+| `android-sdk/platform-tools/` | worker/服务使用的 adb（新机器需自行解压 platform-tools 到此路径） |
 | `logs/tray.log` | 托盘动作与错误记录，排查托盘问题时先看这里 |
 | `scripts/mumu_restart.ps1` | 重启服务的分离助手 |
 | `scripts/check_ps_syntax.ps1` | PowerShell 语法/编码自查 |
