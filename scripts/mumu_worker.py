@@ -9,7 +9,7 @@ import threading
 import time
 from pathlib import Path
 
-from mumu_common import ROOT, NO_WINDOW, database, now, read_config, update_job
+from mumu_common import ROOT, NO_WINDOW, database, is_workday, now, read_config, update_job
 
 
 class Cancelled(RuntimeError):
@@ -141,8 +141,8 @@ class MuMuRun:
                 raise Cancelled("自动签到或此时段已关闭")
             if cfg != self.cfg:
                 raise Cancelled("设置已变更，本次运行取消；新设置用于后续时段")
-            if now().weekday() >= 5 or time.time() >= self.job["window_end"]:
-                raise RuntimeError("已过签到时间窗口，停止提交")
+            if not is_workday(cfg, now().date()) or time.time() >= self.job["window_end"]:
+                raise RuntimeError("非工作日或已过签到时间窗口，停止提交")
 
     def pause(self, seconds):
         end = time.monotonic() + max(0, seconds)

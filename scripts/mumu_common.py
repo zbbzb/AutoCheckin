@@ -9,7 +9,8 @@ import re
 import sqlite3
 import subprocess
 import time
-from datetime import datetime, timedelta, timezone
+import urllib.request
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +24,90 @@ TRAY_LOCK = DATA / "tray.pid"
 TZ = timezone(timedelta(hours=8), "Asia/Shanghai")
 NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 TERMINAL = {"success", "preview", "failed", "uncertain", "missed", "cancelled"}
+
+# Workday calendars: data/workdays-YYYY.json mirrors NateScarlet/holiday-cn
+# (State Council schedule incl. 调休 working weekends); data/workdays-override.json
+# is the user's manual {"work": [...], "off": [...]} for company-specific dates.
+WORKDAY_CACHE_DIR = DATA
+HOLIDAY_CN_URL = "https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/{year}.json"
+_workday_cache = {}  # str(path) -> (mtime, parsed) so per-second plan() calls stay cheap
+
+
+def _load_json_cached(path):
+    path = Path(path)
+    try:
+        stamp = path.stat().st_mtime
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    key = str(path)
+    cached = _workday_cache.get(key)
+    if cached and cached[0] == stamp:
+        return cached[1]
+    _workday_cache[key] = (stamp, payload)
+    return payload
+
+
+def _dataset_days(year):
+    payload = _load_json_cached(WORKDAY_CACHE_DIR / f"workdays-{year}.json")
+    if not isinstance(payload, dict) or not isinstance(payload.get("days"), list):
+        return {}
+    return {day["date"]: bool(day["isOffDay"]) for day in payload["days"]
+            if isinstance(day, dict) and day.get("date") and isinstance(day.get("isOffDay"), bool)}
+
+
+def is_workday(cfg, day):
+    """True when check-ins should be scheduled for this date.
+
+    Precedence: manual override > national holiday dataset > plain weekday rule.
+    The weekday fallback keeps the schedule alive with no cached dataset at all
+    (offline installs degrade to the old Monday-Friday behaviour).
+    """
+    iso = day.isoformat()
+    override = _load_json_cached(WORKDAY_CACHE_DIR / "workdays-override.json") or {}
+    if isinstance(override.get("off"), list) and iso in override["off"]:
+        return False
+    if isinstance(override.get("work"), list) and iso in override["work"]:
+        return True
+    if cfg is None or cfg.get("workday_sync", True):
+        flags = _dataset_days(day.year)
+        if iso in flags:
+            return not flags[iso]
+    return day.weekday() < 5
+
+
+def workday_summary(year):
+    """Off days and extra working days of a cached calendar year (fetch CLI)."""
+    flags = _dataset_days(year)
+    return {"year": year, "days": len(flags),
+            "off": sorted(d for d, off in flags.items() if off),
+            "extra_work": sorted(d for d, off in flags.items() if not off)}
+
+
+def refresh_workdays(years):
+    """Cache missing holiday-cn datasets. Returns the years actually fetched.
+
+    Never raises: a failed download just keeps the previous calendar (or the
+    weekday fallback), because the scheduler must survive offline days.
+    """
+    fetched = []
+    for year in years:
+        target = WORKDAY_CACHE_DIR / f"workdays-{year}.json"
+        if target.exists():
+            continue
+        try:
+            WORKDAY_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            with urllib.request.urlopen(HOLIDAY_CN_URL.format(year=year), timeout=15) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            if int(payload.get("year", 0)) != year or not isinstance(payload.get("days"), list):
+                continue
+            temp = target.with_suffix(".tmp")
+            temp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            os.replace(temp, target)
+            fetched.append(year)
+        except Exception:
+            continue
+    return fetched
 
 
 def boot_id():
@@ -144,6 +229,8 @@ def validate_config(value):
     for key in ("enabled", "silent"):
         if type(cfg.get(key)) is not bool:
             raise ValueError(f"{key} 必须是开关值")
+    if type(cfg.get("workday_sync", True)) is not bool:
+        raise ValueError("workday_sync 必须是开关值")
     for key, low, high in (("random_minutes", 1, 30), ("prepare_seconds", 60, 600), ("vm_index", 0, 999)):
         if type(cfg.get(key)) is not int or not low <= cfg[key] <= high:
             raise ValueError(f"{key} 应在 {low}–{high} 之间")
@@ -234,10 +321,20 @@ def windows(day, slot, minutes):
 def plan(db, cfg, current=None, rng=None):
     current = current or now()
     rng = rng or random.SystemRandom()
+    # Drop pending jobs on non-workdays (holiday dataset may have arrived after they
+    # were planned). They must vanish, not expire as fake "missed" records on a day
+    # nobody should have worked.
+    for (day_iso,) in db.execute("SELECT DISTINCT day FROM jobs WHERE status='pending'").fetchall():
+        try:
+            day = date.fromisoformat(str(day_iso))
+        except ValueError:
+            continue
+        if not is_workday(cfg, day):
+            db.execute("DELETE FROM jobs WHERE day=? AND status='pending'", (day_iso,))
     for offset in range(8):
         day = current.date() + timedelta(days=offset)
-        if day.weekday() >= 5:
-            continue
+        if not is_workday(cfg, day):
+            continue  # Weekends, legal holidays; 调休 weekends still get jobs.
         for slot in cfg["slots"]:
             start, end = windows(day, slot, cfg["random_minutes"])
             signature = json.dumps([slot["kind"], slot["time"], cfg["random_minutes"]])
@@ -265,7 +362,7 @@ def plan(db, cfg, current=None, rng=None):
 
 def due_job(db, cfg, current=None):
     current = current or now()
-    if not cfg["enabled"] or current.weekday() >= 5:
+    if not cfg["enabled"] or not is_workday(cfg, current.date()):
         return None
     enabled = {s["id"] for s in cfg["slots"] if s["enabled"]}
     rows = db.execute("SELECT * FROM jobs WHERE status='pending' AND prepare_at<=? "

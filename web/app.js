@@ -24,17 +24,17 @@ function render(data) {
   $("dateLabel").textContent=new Date(data.now).toLocaleDateString("zh-CN",{timeZone:"Asia/Shanghai",year:"numeric",month:"long",day:"numeric",weekday:"long"})+" · 今天也按自己的节奏来";
   $("master").checked=cfg.enabled; $("master").disabled=false; $("masterDot").classList.toggle("off",!cfg.enabled);
   $("masterStatus").textContent=cfg.enabled?"自动签到已开启":"自动签到已暂停";
-  $("heroTitle").textContent=!cfg.enabled?"暂歇一下，安排由你决定。":data.weekend?"周末好好休息，周一再继续。":"让每天的签到，有条不紊。";
+  $("heroTitle").textContent=!cfg.enabled?"暂歇一下，安排由你决定。":data.weekend?"今天是休息日，不安排签到。":"让每天的签到，有条不紊。";
   $("heroSub").textContent=cfg.enabled?"按你的时间自动准备，完成后关闭应用与模拟器。":"开启总开关后，将在有效时间窗口内继续执行。";
   $("randomBadge").textContent=`${cfg.random_minutes} 分钟随机窗口`; $("silentBadge").textContent=cfg.silent?"后台静默":"显示模拟器";
   const active=data.active[0], next=active?.mode==="live"?active:data.next;
   $("nextTime").textContent=next?clock(next.planned):"—"; $("nextLabel").textContent=next?`${day(next.planned)} · ${next.label} · 提前 ${cfg.prepare_seconds/60} 分钟准备`:cfg.enabled?"今天的安排已结束":"自动签到已暂停";
   $("done").textContent=data.today.filter(j=>j.status==="success").length; $("total").textContent=` / ${data.weekend?0:cfg.slots.filter(s=>s.enabled).length} 次`;
-  const trouble=data.today.filter(j=>["failed","uncertain"].includes(j.status)).length; $("todayNote").textContent=data.weekend?"周末不执行签到":trouble?`${trouble} 次需要查看执行记录`:"每个时段独立随机，完成后留存记录";
+  const trouble=data.today.filter(j=>["failed","uncertain"].includes(j.status)).length; $("todayNote").textContent=data.weekend?"休息日不执行签到（按节假日/调休日历）":trouble?`${trouble} 次需要查看执行记录`:"每个时段独立随机，完成后留存记录";
   $("runStatus").textContent=active?(phases[active.phase] || labels[active.status]):"空闲待命";
   $("runDetail").textContent=active?active.message:"关闭网页后，后台服务仍会运行";
   $("stop").hidden=!active; $("preview").disabled=!!active;
-  for(const [i,s] of cfg.slots.entries()) { const job=data.today.find(j=>j.slot_id===s.id); const status=document.querySelector(`[data-state="${i}"]`); document.querySelector(`[data-planned="${i}"]`).textContent=job?clock(job.planned):"—"; status.textContent=!s.enabled?"此时段已关闭":job?labels[job.status]:data.weekend?"周末休息":"未安排"; status.className="row-state "+(job?.status||""); }
+  for(const [i,s] of cfg.slots.entries()) { const job=data.today.find(j=>j.slot_id===s.id); const status=document.querySelector(`[data-state="${i}"]`); document.querySelector(`[data-planned="${i}"]`).textContent=job?clock(job.planned):"—"; status.textContent=!s.enabled?"此时段已关闭":job?labels[job.status]:data.weekend?"休息日":"未安排"; status.className="row-state "+(job?.status||""); }
   renderService(data.service);
   $("historyRows").innerHTML=data.history.length?data.history.map(j=>`<div class="history-item"><div class="history-time">${day(j.finished||j.planned)} ${clock(j.finished||j.planned,false)}</div><div class="history-copy"><strong>${escape(j.label)}<span class="badge ${escape(j.status)}">${escape(labels[j.status]||j.status)}</span></strong><p>${escape(j.message)}</p></div>${j.log_url?`<a href="${escape(j.log_url)}" target="_blank" rel="noopener">查看日志 ↗</a>`:""}</div>`).join(""):"<div class=\"empty\">还没有执行记录，下一次运行后会自动出现在这里。</div>";
 }

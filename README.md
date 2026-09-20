@@ -4,7 +4,15 @@
 
 ## 默认安排
 
-仅周一到周五执行，周六、周日不签到。按北京时间（UTC+8）安排。
+按**工作日历**执行（不再是简单的周一到周五）：默认接入国务院节假日安排（含**调休上班的周末**），数据来自开源的 [holiday-cn](https://github.com/NateScarlet/holiday-cn) 日历，服务每天自动下载缺失年份并缓存到 `data/workdays-年份.json`；断网或无缓存时自动回退为「周一到周五」规则。所有时间按北京时间（UTC+8）。
+
+公司安排与国家日历不一致时，在 `data/workdays-override.json` 手工指定（优先级最高）：
+
+```json
+{ "work": ["2026-10-10"], "off": ["2026-09-30"] }
+```
+
+配置项 `workday_sync`（默认开）可关闭数据集同步，仅用周几规则；手工覆盖在任何模式下都生效。
 
 | 时段 | 标准时间 | 随机签到窗口 |
 |---|---|---|
@@ -17,7 +25,7 @@
 
 每天各时段独立随机到秒，并保存至本地数据库。网页显示**计划点击签到的时间**。默认提前 180 秒启动准备；临近随机时间执行两次刷新，每次手势完成后等待完整 10 秒，然后核对并点击。识别或开机耗时可能让点击稍晚于计划时间，但超过窗口就停止提交。随机点避开窗口最后 5 秒。
 
-电脑关机、休眠或没有登录时无法签到。恢复后若仍在窗口内会尽快执行，超过窗口会标记跳过，不补签。这里只区分周一至周五，不识别法定节假日或调休。
+电脑关机、休眠或没有登录时无法签到。恢复后若仍在窗口内会尽快执行，超过窗口会标记跳过，不补签。工作日按上文的工作日历判定。
 
 ## 控制台
 
@@ -128,7 +136,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\notify_install.p
 **验证（按序执行，全部通过才算部署成功）**
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests    # 预期 69 tests OK；测试自包含，无需任何私有配置
+.\.venv\Scripts\python.exe -m unittest discover -s tests    # 预期 79 tests OK；测试自包含，无需任何私有配置
+.\.venv\Scripts\python.exe scripts\fetch_workdays.py        # 拉取节假日/调休日历（今年+明年；明年未发布会提示并自动回退）
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\check_ps_syntax.ps1       # 预期全部 OK
 Invoke-RestMethod http://127.0.0.1:18765/api/health                                        # 预期 service=running
 ```
@@ -169,6 +178,8 @@ Invoke-RestMethod http://127.0.0.1:18765/api/health                             
 | `scripts/mumu_tray.ps1` `scripts/tray_text.json` | 托盘图标与其中文文案 |
 | `scripts/notify_daemon.py` `config/notify.json` `.env` | 打卡结果飞书通知器（凭据在 `.env`；托盘「飞书通知」勾选框开关；见 [通知器文档](docs/notifier.md)） |
 | `scripts/adb_recycle.ps1` `scripts/install_adb_recycle.ps1` | 计划任务 `AutoCheckin-AdBRecycle`：每天 03:00 回收 adb server，防止长驻僵死（见 [9-15 事故记录](docs/incident-20260915-adb.md)） |
+| `scripts/fetch_workdays.py` | 手动拉取节假日/调休日历（服务每天也会自动拉缺失年份） |
+| `data/workdays-年份.json` `data/workdays-override.json` | holiday-cn 日历缓存；公司特有安排的手工覆盖（work/off 日期表） |
 | `android-sdk/platform-tools/` | worker/服务使用的 adb（新机器需自行解压 platform-tools 到此路径） |
 | `logs/tray.log` | 托盘动作与错误记录，排查托盘问题时先看这里 |
 | `scripts/mumu_restart.ps1` | 重启服务的分离助手 |

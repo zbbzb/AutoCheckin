@@ -1,6 +1,7 @@
 {
   "enabled": true,
   "silent": true,
+  "workday_sync": true,
   "random_minutes": 15,
   "prepare_seconds": 180,
   "manager_path": "C:\\Path\\To\\MuMuPlayer\\nx_main\\MuMuManager.exe",

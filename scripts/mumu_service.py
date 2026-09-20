@@ -14,8 +14,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 from mumu_common import (ROOT, SERVICE_LOCK, STOP_DONE, NO_WINDOW, clear_pid, clear_stopped,
-                         database, due_job, mark_stopped, now, plan, read_config, running, save_config,
-                         write_pid)
+                         database, due_job, is_workday, mark_stopped, now, plan, read_config,
+                         refresh_workdays, running, save_config, write_pid)
 
 PORT = 18765
 TOKEN = secrets.token_urlsafe(32)
@@ -175,7 +175,26 @@ def cleanup_orphan(row):
             raise RuntimeError("关闭模拟器命令失败")
 
 
+WORKDAY_REFRESH_DAY = {"day": ""}
+
+
+def maybe_refresh_workdays():
+    """Try to fetch missing holiday calendars once per day, quietly.
+
+    Next year's calendar is usually published in Nov/Dec; probing for it daily
+    is one cheap HTTPS call and fails silently until it exists.
+    """
+    today = now().strftime("%Y-%m-%d")
+    if WORKDAY_REFRESH_DAY["day"] == today:
+        return
+    WORKDAY_REFRESH_DAY["day"] = today
+    fetched = refresh_workdays((now().year, now().year + 1))
+    if fetched:
+        log_service(f"workday calendars fetched: {fetched}")
+
+
 def tick():
+    maybe_refresh_workdays()
     with GUARD, database() as db:
         cfg = read_config()
         active = db.execute("SELECT * FROM jobs WHERE status IN ('starting','running') OR (status='cancelled' AND finished IS NULL)").fetchall()
@@ -252,7 +271,7 @@ def state():
             job["log_url"] = f"/api/log?id={job['id']}" if job["run_dir"] else None
         return {"config": cfg, "now": now().isoformat(), "today": jobs, "history": history,
                 "active": active, "next": upcoming[0] if upcoming and cfg["enabled"] else None,
-                "weekend": now().weekday() >= 5, "token": TOKEN,
+                "weekend": not is_workday(cfg, now().date()), "token": TOKEN,
                 "service": "running", "version": 1}
 
 
